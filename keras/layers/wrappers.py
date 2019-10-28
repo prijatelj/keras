@@ -7,6 +7,7 @@ from __future__ import print_function
 
 import copy
 from ..engine.base_layer import Layer
+from ..engine.base_layer import disable_tracking
 from ..engine.base_layer import InputSpec
 from ..utils.generic_utils import has_arg
 from ..utils.generic_utils import object_list_uid
@@ -26,6 +27,7 @@ class Wrapper(Layer):
         layer: The layer to be wrapped.
     """
 
+    @disable_tracking
     def __init__(self, layer, **kwargs):
         self.layer = layer
         # Tracks mapping of Wrapper inputs to inner layer inputs. Useful when
@@ -363,12 +365,7 @@ class Bidirectional(Wrapper):
             raise ValueError('Invalid merge mode. '
                              'Merge mode should be one of '
                              '{"sum", "mul", "ave", "concat", None}')
-        self.forward_layer = copy.copy(layer)
-        config = layer.get_config()
-        config['go_backwards'] = not config['go_backwards']
-        self.backward_layer = layer.__class__.from_config(config)
-        self.forward_layer.name = 'forward_' + self.forward_layer.name
-        self.backward_layer.name = 'backward_' + self.backward_layer.name
+        self._set_sublayers(layer)
         self.merge_mode = merge_mode
         if weights:
             nw = len(weights)
@@ -382,6 +379,18 @@ class Bidirectional(Wrapper):
         super(Bidirectional, self).__init__(layer, **kwargs)
         self.input_spec = layer.input_spec
         self._num_constants = None
+
+    @disable_tracking
+    def _set_sublayers(self, layer):
+        # This is isolated in its own method in order to use
+        # the disable_tracking decorator without altering the
+        # visible signature of __init__.
+        self.forward_layer = copy.copy(layer)
+        config = layer.get_config()
+        config['go_backwards'] = not config['go_backwards']
+        self.backward_layer = layer.__class__.from_config(config)
+        self.forward_layer.name = 'forward_' + self.forward_layer.name
+        self.backward_layer.name = 'backward_' + self.backward_layer.name
 
     @property
     def trainable(self):

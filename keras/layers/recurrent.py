@@ -14,6 +14,7 @@ from .. import initializers
 from .. import regularizers
 from .. import constraints
 from ..engine.base_layer import Layer
+from ..engine.base_layer import disable_tracking
 from ..engine.base_layer import InputSpec
 from ..utils.generic_utils import has_arg
 from ..utils.generic_utils import to_list
@@ -407,7 +408,7 @@ class RNN(Layer):
                              '(tuple of integers, '
                              'one integer per RNN state).')
         super(RNN, self).__init__(**kwargs)
-        self.cell = cell
+        self._set_cell(cell)
         self.return_sequences = return_sequences
         self.return_state = return_state
         self.go_backwards = go_backwards
@@ -420,6 +421,13 @@ class RNN(Layer):
         self._states = None
         self.constants_spec = None
         self._num_constants = None
+
+    @disable_tracking
+    def _set_cell(self, cell):
+        # This is isolated in its own method in order to use
+        # the disable_tracking decorator without altering the
+        # visible signature of __init__.
+        self.cell = cell
 
     @property
     def states(self):
@@ -1198,7 +1206,7 @@ class GRUCell(Layer):
         recurrent_activation: Activation function to use
             for the recurrent step
             (see [activations](../activations.md)).
-            Default: hard sigmoid (`hard_sigmoid`).
+            Default: sigmoid (`sigmoid`).
             If you pass `None`, no activation is applied
             (ie. "linear" activation: `a(x) = x`).
         use_bias: Boolean, whether the layer uses a bias vector.
@@ -1246,7 +1254,7 @@ class GRUCell(Layer):
 
     def __init__(self, units,
                  activation='tanh',
-                 recurrent_activation='hard_sigmoid',
+                 recurrent_activation='sigmoid',
                  use_bias=True,
                  kernel_initializer='glorot_uniform',
                  recurrent_initializer='orthogonal',
@@ -1259,7 +1267,7 @@ class GRUCell(Layer):
                  bias_constraint=None,
                  dropout=0.,
                  recurrent_dropout=0.,
-                 implementation=1,
+                 implementation=2,
                  reset_after=False,
                  **kwargs):
         super(GRUCell, self).__init__(**kwargs)
@@ -1535,7 +1543,7 @@ class GRU(RNN):
         recurrent_activation: Activation function to use
             for the recurrent step
             (see [activations](../activations.md)).
-            Default: hard sigmoid (`hard_sigmoid`).
+            Default: sigmoid (`sigmoid`).
             If you pass `None`, no activation is applied
             (ie. "linear" activation: `a(x) = x`).
         use_bias: Boolean, whether the layer uses a bias vector.
@@ -1613,7 +1621,7 @@ class GRU(RNN):
     @interfaces.legacy_recurrent_support
     def __init__(self, units,
                  activation='tanh',
-                 recurrent_activation='hard_sigmoid',
+                 recurrent_activation='sigmoid',
                  use_bias=True,
                  kernel_initializer='glorot_uniform',
                  recurrent_initializer='orthogonal',
@@ -1627,7 +1635,7 @@ class GRU(RNN):
                  bias_constraint=None,
                  dropout=0.,
                  recurrent_dropout=0.,
-                 implementation=1,
+                 implementation=2,
                  return_sequences=False,
                  return_state=False,
                  go_backwards=False,
@@ -1800,7 +1808,7 @@ class LSTMCell(Layer):
         recurrent_activation: Activation function to use
             for the recurrent step
             (see [activations](../activations.md)).
-            Default: hard sigmoid (`hard_sigmoid`).
+            Default: sigmoid (`sigmoid`).
             If you pass `None`, no activation is applied
             (ie. "linear" activation: `a(x) = x`).x
         use_bias: Boolean, whether the layer uses a bias vector.
@@ -1850,7 +1858,7 @@ class LSTMCell(Layer):
 
     def __init__(self, units,
                  activation='tanh',
-                 recurrent_activation='hard_sigmoid',
+                 recurrent_activation='sigmoid',
                  use_bias=True,
                  kernel_initializer='glorot_uniform',
                  recurrent_initializer='orthogonal',
@@ -1864,7 +1872,7 @@ class LSTMCell(Layer):
                  bias_constraint=None,
                  dropout=0.,
                  recurrent_dropout=0.,
-                 implementation=1,
+                 implementation=2,
                  **kwargs):
         super(LSTMCell, self).__init__(**kwargs)
         self.units = units
@@ -1918,6 +1926,7 @@ class LSTMCell(Layer):
 
         if self.use_bias:
             if self.unit_forget_bias:
+                @K.eager
                 def bias_initializer(_, *args, **kwargs):
                     return K.concatenate([
                         self.bias_initializer((self.units,), *args, **kwargs),
@@ -2087,7 +2096,7 @@ class LSTM(RNN):
         recurrent_activation: Activation function to use
             for the recurrent step
             (see [activations](../activations.md)).
-            Default: hard sigmoid (`hard_sigmoid`).
+            Default: sigmoid (`sigmoid`).
             If you pass `None`, no activation is applied
             (ie. "linear" activation: `a(x) = x`).
         use_bias: Boolean, whether the layer uses a bias vector.
@@ -2168,7 +2177,7 @@ class LSTM(RNN):
     @interfaces.legacy_recurrent_support
     def __init__(self, units,
                  activation='tanh',
-                 recurrent_activation='hard_sigmoid',
+                 recurrent_activation='sigmoid',
                  use_bias=True,
                  kernel_initializer='glorot_uniform',
                  recurrent_initializer='orthogonal',
@@ -2183,7 +2192,7 @@ class LSTM(RNN):
                  bias_constraint=None,
                  dropout=0.,
                  recurrent_dropout=0.,
-                 implementation=1,
+                 implementation=2,
                  return_sequences=False,
                  return_state=False,
                  go_backwards=False,

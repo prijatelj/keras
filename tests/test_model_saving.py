@@ -14,7 +14,7 @@ from keras.engine.saving import preprocess_weights_for_loading
 from keras.models import Model, Sequential
 from keras.layers import Dense, Lambda, RepeatVector, TimeDistributed
 from keras.layers import Bidirectional, GRU, LSTM, CuDNNGRU, CuDNNLSTM
-from keras.layers import Conv2D, Flatten
+from keras.layers import Conv2D, Flatten, Activation
 from keras.layers import Input, InputLayer
 from keras.initializers import Constant
 from keras import optimizers
@@ -39,7 +39,7 @@ def test_sequential_model_saving():
     model.add(Dense(2, input_shape=(3,)))
     model.add(RepeatVector(3))
     model.add(TimeDistributed(Dense(3)))
-    model.compile(loss=losses.MSE,
+    model.compile(loss=losses.MeanSquaredError(),
                   optimizer=optimizers.RMSprop(lr=0.0001),
                   metrics=[metrics.categorical_accuracy],
                   sample_weight_mode='temporal')
@@ -706,6 +706,21 @@ def test_saving_constant_initializer_with_numpy():
     save_model(model, fname)
     model = load_model(fname)
     os.remove(fname)
+
+
+def test_saving_group_naming_h5py(tmpdir):
+    """Test saving model with layer which name is prefix to a previous layer
+    name
+    """
+
+    input_layer = Input((None, None, 3), name='test_input')
+    x = Conv2D(1, 1, name='conv1/conv')(input_layer)
+    x = Activation('relu', name='conv1')(x)
+
+    model = Model(inputs=input_layer, outputs=x)
+    p = tmpdir.mkdir("test").join("test.h5")
+    model.save_weights(p)
+    model.load_weights(p)
 
 
 def test_save_load_weights_gcs():
